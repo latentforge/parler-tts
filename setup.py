@@ -46,7 +46,7 @@ with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
 # read version
-with open(os.path.join(here, "parler_tts", "__init__.py"), encoding="utf-8") as f:
+with open(os.path.join(here, "t2a_lora", "models", "parler_tts", "__init__.py"), encoding="utf-8") as f:
     for line in f:
         if line.startswith("__version__"):
             version = line.split("=")[1].strip().strip('"')
@@ -55,12 +55,12 @@ with open(os.path.join(here, "parler_tts", "__init__.py"), encoding="utf-8") as 
         raise RuntimeError("Unable to find version string.")
 
 setuptools.setup(
-    name="parler_tts",
+    name="t2a_lora_parler_tts",
     version=version,
     description="Toolkit for using and training Parler-TTS, a high-quality text-to-speech model.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_namespace_packages(include=["t2a_lora.*"]),
     install_requires=_deps,
     extras_require={
         "dev": _extras_dev_deps,
