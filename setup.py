@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modifications by LatentForge:
+# - Updated folder structure from parler_tts to voicestudio/models/parler_tts
+# - Modified package discovery and version file paths accordingly
 
 import os
 
@@ -46,7 +50,7 @@ with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
 # read version
-with open(os.path.join(here, "t2a_lora", "models", "parler_tts", "__init__.py"), encoding="utf-8") as f:
+with open(os.path.join(here, "voicestudio", "models", "parler_tts", "__init__.py"), encoding="utf-8") as f:
     for line in f:
         if line.startswith("__version__"):
             version = line.split("=")[1].strip().strip('"')
@@ -55,12 +59,12 @@ with open(os.path.join(here, "t2a_lora", "models", "parler_tts", "__init__.py"),
         raise RuntimeError("Unable to find version string.")
 
 setuptools.setup(
-    name="t2a_lora_parler_tts",
+    name="voicestudio_parler_tts",
     version=version,
     description="Toolkit for using and training Parler-TTS, a high-quality text-to-speech model.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=setuptools.find_namespace_packages(include=["t2a_lora.*"]),
+    packages=setuptools.find_namespace_packages(include=["voicestudio.*"]),
     install_requires=_deps,
     extras_require={
         "dev": _extras_dev_deps,
