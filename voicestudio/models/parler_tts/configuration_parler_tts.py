@@ -237,6 +237,15 @@ class ParlerTTSConfig(PretrainedConfig):
     model_type = "parler_tts"
     is_composition = True
 
+    # Fix for transformers>=4.37.0 compatibility issue
+    # The newer version of transformers calls `self.__class__()` in `to_diff_dict()` 
+    # to create a default instance for comparison. However, ParlerTTSConfig requires
+    # text_encoder, audio_encoder, and decoder configs as mandatory arguments,
+    # which cannot be satisfied during this empty initialization.
+    # Setting this flag tells transformers to skip the default instance creation.
+    # See: https://github.com/huggingface/transformers/blob/main/src/transformers/configuration_utils.py#L842
+    has_no_defaults_at_init = True
+
     def __init__(self, vocab_size=1024, prompt_cross_attention=False, **kwargs):
         super().__init__(**kwargs)
         if "text_encoder" not in kwargs or "audio_encoder" not in kwargs or "decoder" not in kwargs:
