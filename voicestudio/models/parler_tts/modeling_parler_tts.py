@@ -2470,15 +2470,8 @@ class ParlerTTSForConditionalGeneration(PreTrainedModel, GenerationMixin):
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
 
-    def tie_weights(self, missing_keys=None, recompute_mapping=True):
-        """
-        Tie the weights between the input embeddings and the output embeddings.
-
-        Args:
-            missing_keys (list, optional): List of missing keys. Added for transformers>=4.46 compatibility.
-            recompute_mapping (bool, optional): Whether to recompute the mapping. Added for transformers>=4.46 compatibility.
-        """
-        super().tie_weights(missing_keys=missing_keys, recompute_mapping=recompute_mapping)
+    def tie_weights(self, *args, **kwargs):
+        super().tie_weights(*args, **kwargs)
 
         # tie text encoder & decoder if needed
         if self.config.tie_encoder_decoder:
