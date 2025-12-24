@@ -534,8 +534,12 @@ class ParlerTTSAttention(nn.Module):
         current_states = key_value_states if key_value_states is not None else hidden_states
         if is_cross_attention and past_key_value and is_updated:
             # reuse k,v, cross_attentions
-            key_states = past_key_value.key_cache[self.layer_idx]
-            value_states = past_key_value.value_cache[self.layer_idx]
+            if hasattr(past_key_value, 'key_cache'):  # legacy API
+                key_states = past_key_value.key_cache[self.layer_idx]
+                value_states = past_key_value.value_cache[self.layer_idx]
+            else:
+                key_states = past_key_value.layers[self.layer_idx].keys
+                value_states = past_key_value.layers[self.layer_idx].values
         else:
             key_states = self._shape_key_value(self.k_proj(current_states), -1, bsz)
             value_states = self._shape_key_value(self.v_proj(current_states), -1, bsz)
@@ -661,8 +665,12 @@ class ParlerTTSFlashAttention2(ParlerTTSAttention):
         current_states = key_value_states if key_value_states is not None else hidden_states
         if is_cross_attention and past_key_value and is_updated:
             # reuse k,v, cross_attentions
-            key_states = past_key_value.key_cache[self.layer_idx]
-            value_states = past_key_value.value_cache[self.layer_idx]
+            if hasattr(past_key_value, 'key_cache'):  # legacy API
+                key_states = past_key_value.key_cache[self.layer_idx]
+                value_states = past_key_value.value_cache[self.layer_idx]
+            else:
+                key_states = past_key_value.layers[self.layer_idx].keys
+                value_states = past_key_value.layers[self.layer_idx].values
         else:
             key_states = self._shape_key_value(self.k_proj(current_states), -1, bsz)
             value_states = self._shape_key_value(self.v_proj(current_states), -1, bsz)
@@ -876,8 +884,12 @@ class ParlerTTSSdpaAttention(ParlerTTSAttention):
         current_states = key_value_states if key_value_states is not None else hidden_states
         if is_cross_attention and past_key_value and is_updated:
             # reuse k,v, cross_attentions
-            key_states = past_key_value.key_cache[self.layer_idx]
-            value_states = past_key_value.value_cache[self.layer_idx]
+            if hasattr(past_key_value, 'key_cache'):  # legacy API
+                key_states = past_key_value.key_cache[self.layer_idx]
+                value_states = past_key_value.value_cache[self.layer_idx]
+            else:
+                key_states = past_key_value.layers[self.layer_idx].keys
+                value_states = past_key_value.layers[self.layer_idx].values
         else:
             key_states = self._shape_key_value(self.k_proj(current_states), -1, bsz)
             value_states = self._shape_key_value(self.v_proj(current_states), -1, bsz)
