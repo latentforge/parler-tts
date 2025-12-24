@@ -522,19 +522,24 @@ class ParlerTTSAttention(nn.Module):
             query_states = apply_rotary_pos_emb(query_states, cos, sin)
 
         if past_key_value is not None:
-            is_updated = past_key_value.is_updated.get(self.layer_idx)
-            if is_cross_attention:
-                # after the first generated id, we can subsequently re-use all key/value_states from cache
-                past_key_value.is_updated[self.layer_idx] = True
-                past_key_value = past_key_value.cross_attention_cache
-            else:
-                past_key_value = past_key_value.self_attention_cache
+            if hasattr(past_key_value, "is_updated"):
+                is_updated = past_key_value.is_updated.get(self.layer_idx)
+                if is_cross_attention:
+                    # after the first generated id, we can subsequently re-use all key/value_states from cache
+                    past_key_value.is_updated[self.layer_idx] = True
+                    past_key_value = past_key_value.cross_attention_cache
+                else:
+                    past_key_value = past_key_value.self_attention_cache
+            else:  # transformers 5.0 compatibility
+                is_updated = False
+                if is_cross_attention and hasattr(past_key_value, "get_seq_length"):
+                    is_updated = past_key_value.get_seq_length(self.layer_idx) > 0
 
         # use key_value_states if cross attention
         current_states = key_value_states if key_value_states is not None else hidden_states
         if is_cross_attention and past_key_value and is_updated:
             # reuse k,v, cross_attentions
-            if hasattr(past_key_value, 'key_cache'):  # legacy API
+            if hasattr(past_key_value, "key_cache"):  # legacy API
                 key_states = past_key_value.key_cache[self.layer_idx]
                 value_states = past_key_value.value_cache[self.layer_idx]
             else:
@@ -653,19 +658,24 @@ class ParlerTTSFlashAttention2(ParlerTTSAttention):
             query_states = apply_rotary_pos_emb(query_states, cos, sin, unsqueeze_dim=2)
 
         if past_key_value is not None:
-            is_updated = past_key_value.is_updated.get(self.layer_idx)
-            if is_cross_attention:
-                # after the first generated id, we can subsequently re-use all key/value_states from cache
-                past_key_value.is_updated[self.layer_idx] = True
-                past_key_value = past_key_value.cross_attention_cache
-            else:
-                past_key_value = past_key_value.self_attention_cache
+            if hasattr(past_key_value, "is_updated"):
+                is_updated = past_key_value.is_updated.get(self.layer_idx)
+                if is_cross_attention:
+                    # after the first generated id, we can subsequently re-use all key/value_states from cache
+                    past_key_value.is_updated[self.layer_idx] = True
+                    past_key_value = past_key_value.cross_attention_cache
+                else:
+                    past_key_value = past_key_value.self_attention_cache
+            else:  # transformers 5.0 compatibility
+                is_updated = False
+                if is_cross_attention and hasattr(past_key_value, "get_seq_length"):
+                    is_updated = past_key_value.get_seq_length(self.layer_idx) > 0
 
         # use key_value_states if cross attention
         current_states = key_value_states if key_value_states is not None else hidden_states
         if is_cross_attention and past_key_value and is_updated:
             # reuse k,v, cross_attentions
-            if hasattr(past_key_value, 'key_cache'):  # legacy API
+            if hasattr(past_key_value, "key_cache"):  # legacy API
                 key_states = past_key_value.key_cache[self.layer_idx]
                 value_states = past_key_value.value_cache[self.layer_idx]
             else:
@@ -872,19 +882,24 @@ class ParlerTTSSdpaAttention(ParlerTTSAttention):
             query_states = apply_rotary_pos_emb(query_states, cos, sin)
 
         if past_key_value is not None:
-            is_updated = past_key_value.is_updated.get(self.layer_idx)
-            if is_cross_attention:
-                # after the first generated id, we can subsequently re-use all key/value_states from cache
-                past_key_value.is_updated[self.layer_idx] = True
-                past_key_value = past_key_value.cross_attention_cache
-            else:
-                past_key_value = past_key_value.self_attention_cache
+            if hasattr(past_key_value, "is_updated"):
+                is_updated = past_key_value.is_updated.get(self.layer_idx)
+                if is_cross_attention:
+                    # after the first generated id, we can subsequently re-use all key/value_states from cache
+                    past_key_value.is_updated[self.layer_idx] = True
+                    past_key_value = past_key_value.cross_attention_cache
+                else:
+                    past_key_value = past_key_value.self_attention_cache
+            else:  # transformers 5.0 compatibility
+                is_updated = False
+                if is_cross_attention and hasattr(past_key_value, "get_seq_length"):
+                    is_updated = past_key_value.get_seq_length(self.layer_idx) > 0
 
         # use key_value_states if cross attention
         current_states = key_value_states if key_value_states is not None else hidden_states
         if is_cross_attention and past_key_value and is_updated:
             # reuse k,v, cross_attentions
-            if hasattr(past_key_value, 'key_cache'):  # legacy API
+            if hasattr(past_key_value, "key_cache"):  # legacy API
                 key_states = past_key_value.key_cache[self.layer_idx]
                 value_states = past_key_value.value_cache[self.layer_idx]
             else:
