@@ -2317,9 +2317,9 @@ class ParlerTTSForConditionalGeneration(PreTrainedModel, GenerationMixin):
     _supports_sdpa = True
     _supports_cache_class = True
     _supports_static_cache = True
-    _tied_weights_keys = [
-        "text_encoder.encoder.embed_tokens.weight",
-    ]
+    _tied_weights_keys = {
+        "text_encoder.encoder.embed_tokens.weight": "text_encoder.shared.weight"
+    }
 
     def __init__(
         self,
