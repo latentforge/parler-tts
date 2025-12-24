@@ -534,6 +534,11 @@ class ParlerTTSAttention(nn.Module):
                 is_updated = False
                 if is_cross_attention and hasattr(past_key_value, "get_seq_length"):
                     is_updated = past_key_value.get_seq_length(self.layer_idx) > 0
+                # Extract the appropriate cache for cross-attention or self-attention
+                if is_cross_attention:
+                    past_key_value = past_key_value.cross_attention_cache
+                else:
+                    past_key_value = past_key_value.self_attention_cache
 
         # use key_value_states if cross attention
         current_states = key_value_states if key_value_states is not None else hidden_states
@@ -670,6 +675,11 @@ class ParlerTTSFlashAttention2(ParlerTTSAttention):
                 is_updated = False
                 if is_cross_attention and hasattr(past_key_value, "get_seq_length"):
                     is_updated = past_key_value.get_seq_length(self.layer_idx) > 0
+                # Extract the appropriate cache for cross-attention or self-attention
+                if is_cross_attention:
+                    past_key_value = past_key_value.cross_attention_cache
+                else:
+                    past_key_value = past_key_value.self_attention_cache
 
         # use key_value_states if cross attention
         current_states = key_value_states if key_value_states is not None else hidden_states
@@ -894,6 +904,11 @@ class ParlerTTSSdpaAttention(ParlerTTSAttention):
                 is_updated = False
                 if is_cross_attention and hasattr(past_key_value, "get_seq_length"):
                     is_updated = past_key_value.get_seq_length(self.layer_idx) > 0
+                # Extract the appropriate cache for cross-attention or self-attention
+                if is_cross_attention:
+                    past_key_value = past_key_value.cross_attention_cache
+                else:
+                    past_key_value = past_key_value.self_attention_cache
 
         # use key_value_states if cross attention
         current_states = key_value_states if key_value_states is not None else hidden_states
