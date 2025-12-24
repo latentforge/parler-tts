@@ -3440,7 +3440,7 @@ class ParlerTTSForConditionalGeneration(PreTrainedModel, GenerationMixin):
 
         if model_kwargs.get("attention_mask", None) is None and requires_attention_mask:
             model_kwargs["attention_mask"] = self._prepare_attention_mask_for_generation(
-                inputs_tensor, generation_config._pad_token_tensor, generation_config._eos_token_tensor
+                inputs_tensor, generation_config, model_kwargs
             )
 
         if "encoder_outputs" not in model_kwargs:
