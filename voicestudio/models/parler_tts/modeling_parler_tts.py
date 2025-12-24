@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modifications by LatentForge:
+#- Updated ParlerTTS model classes to explicitly inherit from `GenerationMixin`, restoring `generate()` functionality and ensuring compatibility with Transformers v4.50+.
 """ PyTorch ParlerTTS model."""
 import copy
 import inspect
@@ -49,6 +52,7 @@ from transformers.modeling_outputs import (
     Seq2SeqLMOutput,
 )
 from transformers.modeling_utils import PreTrainedModel
+from transformers.generation import GenerationMixin
 from transformers.utils import (
     add_start_docstrings,
     add_start_docstrings_to_model_forward,
@@ -95,7 +99,6 @@ MUSICGEN_PRETRAINED_MODEL_ARCHIVE_LIST = [
 
 
 NEED_SETUP_CACHE_CLASSES_MAPPING = {"static": StaticCache, "sliding_window": SlidingWindowCache}
-
 
 
 @dataclass
@@ -158,6 +161,7 @@ class ParlerTTSSeq2SeqLMOutput(ModelOutput):
     encoder_attentions: Optional[Tuple[torch.FloatTensor, ...]] = None
     per_codebook_losses: Optional[List[torch.FloatTensor]] = None
 
+
 @dataclass
 class ParlerTTSCausalLMOutputWithCrossAttentions(ModelOutput):
     """
@@ -201,6 +205,7 @@ class ParlerTTSCausalLMOutputWithCrossAttentions(ModelOutput):
     attentions: Optional[Tuple[torch.FloatTensor, ...]] = None
     cross_attentions: Optional[Tuple[torch.FloatTensor, ...]] = None
     per_codebook_losses: Optional[List[torch.FloatTensor]] = None
+
 
 def apply_delay_pattern_mask(input_ids, decoder_pad_token_mask):
     """Apply a delay pattern mask to the decoder input ids, only preserving predictions where
@@ -1821,7 +1826,7 @@ class ParlerTTSModel(ParlerTTSPreTrainedModel):
     "The Parler-TTS decoder model with a language modelling head on top.",
     MUSICGEN_START_DOCSTRING,
 )
-class ParlerTTSForCausalLM(ParlerTTSPreTrainedModel):
+class ParlerTTSForCausalLM(ParlerTTSPreTrainedModel, GenerationMixin):
     def __init__(self, config: ParlerTTSDecoderConfig):
         super().__init__(config)
 
@@ -2303,7 +2308,7 @@ class ParlerTTSForCausalLM(ParlerTTSPreTrainedModel):
     "for music generation tasks with one or both of text and audio prompts.",
     MUSICGEN_START_DOCSTRING,
 )
-class ParlerTTSForConditionalGeneration(PreTrainedModel):
+class ParlerTTSForConditionalGeneration(PreTrainedModel, GenerationMixin):
     config_class = ParlerTTSConfig
     base_model_prefix = "encoder_decoder"
     main_input_name = "input_ids"
@@ -2435,7 +2440,14 @@ class ParlerTTSForConditionalGeneration(PreTrainedModel):
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
 
-    def tie_weights(self):
+    def tie_weights(self, missing_keys=None, recompute_mapping=True):
+        """
+        Tie the weights between the input embeddings and the output embeddings.
+
+        Args:
+            missing_keys (list, optional): List of missing keys. Added for transformers>=4.46 compatibility.
+            recompute_mapping (bool, optional): Whether to recompute the mapping. Added for transformers>=4.46 compatibility.
+        """
         # tie text encoder & decoder if needed
         if self.config.tie_encoder_decoder:
             # tie text encoder and decoder base model
