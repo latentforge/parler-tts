@@ -2317,6 +2317,9 @@ class ParlerTTSForConditionalGeneration(PreTrainedModel, GenerationMixin):
     _supports_sdpa = True
     _supports_cache_class = True
     _supports_static_cache = True
+    _tied_weights_keys = [
+        "text_encoder.encoder.embed_tokens.weight",
+    ]
 
     def __init__(
         self,
@@ -2425,7 +2428,7 @@ class ParlerTTSForConditionalGeneration(PreTrainedModel, GenerationMixin):
         audio_type = audio_encoder.config.model_type
         if audio_type in {"encodec", "dac_on_the_hub"} or (audio_type == "dac" and not is_dac_integrated_to_transformers):
             self.use_4dim_audio_codes = True 
- 
+
         # Initialize projection and embedding layers and tie text encoder and decoder weights if set accordingly
         self.post_init()
 
@@ -2448,6 +2451,8 @@ class ParlerTTSForConditionalGeneration(PreTrainedModel, GenerationMixin):
             missing_keys (list, optional): List of missing keys. Added for transformers>=4.46 compatibility.
             recompute_mapping (bool, optional): Whether to recompute the mapping. Added for transformers>=4.46 compatibility.
         """
+        super().tie_weights(missing_keys=missing_keys, recompute_mapping=recompute_mapping)
+
         # tie text encoder & decoder if needed
         if self.config.tie_encoder_decoder:
             # tie text encoder and decoder base model
