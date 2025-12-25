@@ -3548,7 +3548,7 @@ class ParlerTTSForConditionalGeneration(PreTrainedModel, GenerationMixin):
                     input_embeds_seq_length = model_kwargs["inputs_embeds"].shape[1]
                     max_cache_len = generation_config.max_length + input_embeds_seq_length - input_ids_length
                 else:
-                    max_cache_len = self.generation_config.max_length
+                    max_cache_len = generation_config.max_length
                 model_kwargs["past_key_values"] = self._get_cache(
                     generation_config.cache_implementation,
                     getattr(generation_config, "num_beams", 1) * batch_size,
