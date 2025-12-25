@@ -521,28 +521,29 @@ class ParlerTTSAttention(nn.Module):
         if self.rope_embeddings:
             query_states = apply_rotary_pos_emb(query_states, cos, sin)
 
-        # Preserve the original EncoderDecoderCache to return later
-        cache = past_key_value
-        is_updated = False
-
         if past_key_value is not None:
             if isinstance(past_key_value, EncoderDecoderCache):
                 is_updated = past_key_value.is_updated.get(self.layer_idx, False)
                 if is_cross_attention:
-                    cache = past_key_value.cross_attention_cache
+                    # after the first generated id, we can subsequently re-use all key/value_states from cache
+                    past_key_value.is_updated[self.layer_idx] = True
+                    past_key_value = past_key_value.cross_attention_cache
                 else:
-                    cache = past_key_value.self_attention_cache
+                    past_key_value = past_key_value.self_attention_cache
+            else:
+                # For non-EncoderDecoderCache (e.g., legacy tuple format)
+                is_updated = False
 
         # use key_value_states if cross attention
         current_states = key_value_states if key_value_states is not None else hidden_states
-        if is_cross_attention and past_key_value is not None and is_updated:
+        if is_cross_attention and past_key_value and is_updated:
             # reuse k,v, cross_attentions
-            if hasattr(cache, "key_cache"):  # legacy API
-                key_states = cache.key_cache[self.layer_idx]
-                value_states = cache.value_cache[self.layer_idx]
+            if hasattr(past_key_value, "key_cache"):  # legacy API
+                key_states = past_key_value.key_cache[self.layer_idx]
+                value_states = past_key_value.value_cache[self.layer_idx]
             else:
-                key_states = cache.layers[self.layer_idx].keys
-                value_states = cache.layers[self.layer_idx].values
+                key_states = past_key_value.layers[self.layer_idx].keys
+                value_states = past_key_value.layers[self.layer_idx].values
         else:
             key_states = self._shape_key_value(self.k_proj(current_states), -1, bsz)
             value_states = self._shape_key_value(self.v_proj(current_states), -1, bsz)
@@ -551,16 +552,12 @@ class ParlerTTSAttention(nn.Module):
                 # cached key states already have rope applied - only apply to new state
                 key_states = apply_rotary_pos_emb(key_states, cos, sin) if self.rope_embeddings else key_states
 
-            if cache is not None:
+            if past_key_value is not None:
                 # save all key/value_states to cache to be re-used for fast auto-regressive generation
                 cache_position = cache_position if not is_cross_attention else None
-                key_states, value_states = cache.update(
+                key_states, value_states = past_key_value.update(
                     key_states, value_states, self.layer_idx, {"cache_position": cache_position}
                 )
-
-        # Update the is_updated flag after cache update
-        if is_cross_attention and isinstance(past_key_value, EncoderDecoderCache):
-            past_key_value.is_updated[self.layer_idx] = True
 
         key_states = repeat_kv(key_states, self.num_key_value_groups)
         value_states = repeat_kv(value_states, self.num_key_value_groups)
@@ -659,28 +656,29 @@ class ParlerTTSFlashAttention2(ParlerTTSAttention):
         if self.rope_embeddings:
             query_states = apply_rotary_pos_emb(query_states, cos, sin, unsqueeze_dim=2)
 
-        # Preserve the original EncoderDecoderCache to return later
-        cache = past_key_value
-        is_updated = False
-
         if past_key_value is not None:
             if isinstance(past_key_value, EncoderDecoderCache):
                 is_updated = past_key_value.is_updated.get(self.layer_idx, False)
                 if is_cross_attention:
-                    cache = past_key_value.cross_attention_cache
+                    # after the first generated id, we can subsequently re-use all key/value_states from cache
+                    past_key_value.is_updated[self.layer_idx] = True
+                    past_key_value = past_key_value.cross_attention_cache
                 else:
-                    cache = past_key_value.self_attention_cache
+                    past_key_value = past_key_value.self_attention_cache
+            else:
+                # For non-EncoderDecoderCache (e.g., legacy tuple format)
+                is_updated = False
 
         # use key_value_states if cross attention
         current_states = key_value_states if key_value_states is not None else hidden_states
-        if is_cross_attention and past_key_value is not None and is_updated:
+        if is_cross_attention and past_key_value and is_updated:
             # reuse k,v, cross_attentions
-            if hasattr(cache, "key_cache"):  # legacy API
-                key_states = cache.key_cache[self.layer_idx]
-                value_states = cache.value_cache[self.layer_idx]
+            if hasattr(past_key_value, "key_cache"):  # legacy API
+                key_states = past_key_value.key_cache[self.layer_idx]
+                value_states = past_key_value.value_cache[self.layer_idx]
             else:
-                key_states = cache.layers[self.layer_idx].keys
-                value_states = cache.layers[self.layer_idx].values
+                key_states = past_key_value.layers[self.layer_idx].keys
+                value_states = past_key_value.layers[self.layer_idx].values
         else:
             key_states = self._shape_key_value(self.k_proj(current_states), -1, bsz)
             value_states = self._shape_key_value(self.v_proj(current_states), -1, bsz)
@@ -689,16 +687,12 @@ class ParlerTTSFlashAttention2(ParlerTTSAttention):
                 # cached key states already have rope applied - only apply to new state
                 key_states = apply_rotary_pos_emb(key_states, cos, sin)
 
-            if cache is not None:
+            if past_key_value is not None:
                 # save all key/value_states to cache to be re-used for fast auto-regressive generation
                 cache_position = cache_position if not is_cross_attention else None
-                key_states, value_states = cache.update(
+                key_states, value_states = past_key_value.update(
                     key_states, value_states, self.layer_idx, {"cache_position": cache_position}
                 )
-
-        # Update the is_updated flag after cache update
-        if is_cross_attention and isinstance(past_key_value, EncoderDecoderCache):
-            past_key_value.is_updated[self.layer_idx] = True
 
         # # TODO: These transpose are quite inefficient but Flash Attention requires the layout [batch_size, sequence_length, num_heads, head_dim]
         # #  We would need to refactor the KV cache to be able to avoid many of these transpose/reshape/view.
@@ -885,28 +879,29 @@ class ParlerTTSSdpaAttention(ParlerTTSAttention):
         if self.rope_embeddings:
             query_states = apply_rotary_pos_emb(query_states, cos, sin)
 
-        # Preserve the original EncoderDecoderCache to return later
-        cache = past_key_value
-        is_updated = False
-
         if past_key_value is not None:
             if isinstance(past_key_value, EncoderDecoderCache):
                 is_updated = past_key_value.is_updated.get(self.layer_idx, False)
                 if is_cross_attention:
-                    cache = past_key_value.cross_attention_cache
+                    # after the first generated id, we can subsequently re-use all key/value_states from cache
+                    past_key_value.is_updated[self.layer_idx] = True
+                    past_key_value = past_key_value.cross_attention_cache
                 else:
-                    cache = past_key_value.self_attention_cache
+                    past_key_value = past_key_value.self_attention_cache
+            else:
+                # For non-EncoderDecoderCache (e.g., legacy tuple format)
+                is_updated = False
 
         # use key_value_states if cross attention
         current_states = key_value_states if key_value_states is not None else hidden_states
-        if is_cross_attention and past_key_value is not None and is_updated:
+        if is_cross_attention and past_key_value and is_updated:
             # reuse k,v, cross_attentions
-            if hasattr(cache, "key_cache"):  # legacy API
-                key_states = cache.key_cache[self.layer_idx]
-                value_states = cache.value_cache[self.layer_idx]
+            if hasattr(past_key_value, "key_cache"):  # legacy API
+                key_states = past_key_value.key_cache[self.layer_idx]
+                value_states = past_key_value.value_cache[self.layer_idx]
             else:
-                key_states = cache.layers[self.layer_idx].keys
-                value_states = cache.layers[self.layer_idx].values
+                key_states = past_key_value.layers[self.layer_idx].keys
+                value_states = past_key_value.layers[self.layer_idx].values
         else:
             key_states = self._shape_key_value(self.k_proj(current_states), -1, bsz)
             value_states = self._shape_key_value(self.v_proj(current_states), -1, bsz)
@@ -915,16 +910,12 @@ class ParlerTTSSdpaAttention(ParlerTTSAttention):
                 # cached key states already have rope applied - only apply to new state
                 key_states = apply_rotary_pos_emb(key_states, cos, sin)
 
-            if cache is not None:
+            if past_key_value is not None:
                 # save all key/value_states to cache to be re-used for fast auto-regressive generation
                 cache_position = cache_position if not is_cross_attention else None
-                key_states, value_states = cache.update(
+                key_states, value_states = past_key_value.update(
                     key_states, value_states, self.layer_idx, {"cache_position": cache_position}
                 )
-
-        # Update the is_updated flag after cache update
-        if is_cross_attention and isinstance(past_key_value, EncoderDecoderCache):
-            past_key_value.is_updated[self.layer_idx] = True
 
         causal_mask = attention_mask
         if attention_mask is not None:  # no matter the length, we just slice it
