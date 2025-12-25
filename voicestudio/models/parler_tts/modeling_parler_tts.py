@@ -2315,6 +2315,44 @@ class ParlerTTSForCausalLM(ParlerTTSPreTrainedModel, GenerationMixin):
             return output_ids
 
 
+def _get_cache_seq_length(cache):
+    """
+    Helper function for transformers 5.0 compatibility
+    Get sequence length from cache object, compatible with both transformers <5.0 and >=5.0.
+
+    In transformers <5.0, cache has get_seq_length() method.
+    In transformers >=5.0, we need to use cache.get_seq_length() if available,
+    or fall back to getting the length from cache.self_attention_cache.layers[0].keys if it exists.
+    """
+    if hasattr(cache, "get_seq_length") and callable(cache.get_seq_length):
+        # Try the method - works in transformers <5.0 and possibly some 5.0 versions
+        try:
+            return cache.get_seq_length()
+        except (AttributeError, TypeError):
+            pass
+
+    # Fallback for transformers 5.0: try to get length from cache structure
+    try:
+        # For EncoderDecoderCache, check self_attention_cache first
+        if hasattr(cache, "self_attention_cache"):
+            self_attn_cache = cache.self_attention_cache
+            if hasattr(self_attn_cache, "layers") and len(self_attn_cache.layers) > 0:
+                first_layer = self_attn_cache.layers[0]
+                if hasattr(first_layer, "keys") and first_layer.keys is not None:
+                    return first_layer.keys.shape[2]  # shape: [batch, heads, seq_len, head_dim]
+
+        # Try direct access to layers for other cache types
+        if hasattr(cache, "layers") and len(cache.layers) > 0:
+            first_layer = cache.layers[0]
+            if hasattr(first_layer, "keys") and first_layer.keys is not None:
+                return first_layer.keys.shape[2]
+    except (AttributeError, IndexError, TypeError):
+        pass
+
+    # Last resort: return 0
+    return 0
+
+
 @add_start_docstrings(
     "The composite Parler-TTS model with a text encoder, audio encoder and ParlerTTS decoder, "
     "for music generation tasks with one or both of text and audio prompts.",
@@ -2973,13 +3011,13 @@ class ParlerTTSForConditionalGeneration(PreTrainedModel, GenerationMixin):
             if cache_position is not None:
                 past_key_values_length = cache_position[0]
             elif past_key_values is not None:
-                past_key_values_length = past_key_values.get_seq_length()
+                past_key_values_length = _get_cache_seq_length(past_key_values)
 
             logger.warning_once(
                 "`prompt_attention_mask` is specified but `attention_mask` is not. A full `attention_mask` will be created. Make sure this is the intended behaviour."
             )
             if past_key_values is None or (
-                isinstance(past_key_values, EncoderDecoderCache) and past_key_values.get_seq_length() == 0
+                isinstance(past_key_values, EncoderDecoderCache) and _get_cache_seq_length(past_key_values) == 0
             ):
                 decoder_attention_mask = torch.ones(input_shape, device=self.device, dtype=decoder_input_ids.dtype)
             elif prompt_attention_mask is not None:
