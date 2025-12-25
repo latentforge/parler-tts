@@ -532,8 +532,9 @@ class ParlerTTSAttention(nn.Module):
                     past_key_value = past_key_value.self_attention_cache
             else:  # transformers 5.0 compatibility
                 is_updated = False
-                if is_cross_attention and hasattr(past_key_value, "get_seq_length"):
-                    is_updated = past_key_value.get_seq_length(self.layer_idx) > 0
+                if is_cross_attention and hasattr(past_key_value, "cross_attention_cache"):
+                    # Check the cross-attention cache length, not the self-attention cache
+                    is_updated = past_key_value.cross_attention_cache.get_seq_length(self.layer_idx) > 0
                 # Extract the appropriate cache for cross-attention or self-attention
                 if is_cross_attention:
                     past_key_value = past_key_value.cross_attention_cache
@@ -673,8 +674,9 @@ class ParlerTTSFlashAttention2(ParlerTTSAttention):
                     past_key_value = past_key_value.self_attention_cache
             else:  # transformers 5.0 compatibility
                 is_updated = False
-                if is_cross_attention and hasattr(past_key_value, "get_seq_length"):
-                    is_updated = past_key_value.get_seq_length(self.layer_idx) > 0
+                if is_cross_attention and hasattr(past_key_value, "cross_attention_cache"):
+                    # Check the cross-attention cache length, not the self-attention cache
+                    is_updated = past_key_value.cross_attention_cache.get_seq_length(self.layer_idx) > 0
                 # Extract the appropriate cache for cross-attention or self-attention
                 if is_cross_attention:
                     past_key_value = past_key_value.cross_attention_cache
@@ -902,8 +904,9 @@ class ParlerTTSSdpaAttention(ParlerTTSAttention):
                     past_key_value = past_key_value.self_attention_cache
             else:  # transformers 5.0 compatibility
                 is_updated = False
-                if is_cross_attention and hasattr(past_key_value, "get_seq_length"):
-                    is_updated = past_key_value.get_seq_length(self.layer_idx) > 0
+                if is_cross_attention and hasattr(past_key_value, "cross_attention_cache"):
+                    # Check the cross-attention cache length, not the self-attention cache
+                    is_updated = past_key_value.cross_attention_cache.get_seq_length(self.layer_idx) > 0
                 # Extract the appropriate cache for cross-attention or self-attention
                 if is_cross_attention:
                     past_key_value = past_key_value.cross_attention_cache
